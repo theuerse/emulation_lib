@@ -19,9 +19,9 @@ def get_common_setup_commands(config):
     cmds.append("sudo iptables -A OUTPUT -d localhost -s localhost -j ACCEPT")
 
     # setup/allow the connection to the ITEC gateway
-    cmds.append("sudo iptables -A INPUT -s " + config['ITEC_GATEWAY'] + " -j ACCEPT")
+    cmds.append("sudo iptables -A INPUT -s " + config['GATEWAY_SERVER'] + " -j ACCEPT")
     cmds.append("sudo iptables -A FORWARD -j ACCEPT")
-    cmds.append("sudo iptables -A OUTPUT -d " + config['ITEC_GATEWAY'] + " -j ACCEPT")
+    cmds.append("sudo iptables -A OUTPUT -d " + config['GATEWAY_SERVER'] + " -j ACCEPT")
 
     # delete all old tc settings (default ceil = rate)
     cmds.append("sudo tc qdisc del dev " + config["EMU_INTERFACE"] + " root")
@@ -53,9 +53,9 @@ def get_common_IFBsetup_commands(config):
     cmds.append("sudo iptables -P OUTPUT DROP")
 
     # setup/allow the connection to the ITEC gateway
-    cmds.append("sudo iptables -A INPUT -s " + config['ITEC_GATEWAY'] + " -j ACCEPT")
+    cmds.append("sudo iptables -A INPUT -s " + config['GATEWAY_SERVER'] + " -j ACCEPT")
     cmds.append("sudo iptables -A FORWARD -j ACCEPT")
-    cmds.append("sudo iptables -A OUTPUT -d " + config['ITEC_GATEWAY'] + " -j ACCEPT")
+    cmds.append("sudo iptables -A OUTPUT -d " + config['GATEWAY_SERVER'] + " -j ACCEPT")
 
     # bring up ifb0
     cmds.append("sudo ip link set ifb0 up")
