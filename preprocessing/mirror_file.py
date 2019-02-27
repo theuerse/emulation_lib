@@ -16,6 +16,10 @@ class MirrorFile(preprocessing_step.PreprocessingStep):
         # read intermediate-file contents
         with open(path, mode="r") as ifFile:
             lines = ifFile.readlines()
+
+            if len(lines) == 1: # ignore empty files (only header)
+                return
+
             newIfFileContent.append(lines[0].rstrip()) # add header
 
             for line in lines[1:]:

@@ -22,42 +22,48 @@ class netem_BDL_(backend.Backend):
         local_setup_cmds.append("sudo iptables -A INPUT -d " + local_ip + " -s " + remote_ip + " -j ACCEPT")
         local_setup_cmds.append("sudo iptables -A OUTPUT -d " + remote_ip + " -s " + local_ip + " -j ACCEPT")
 
-        # get target-parameters
-        parts = line.split()
-        target_bitrate = int(round(float(parts[mapping["rate"]]), 0))
+        if line:
+            # setup htb as root for the queues added later on
+            local_setup_cmds.append("sudo tc qdisc add dev " + config["EMU_INTERFACE"] + " root handle 1: htb default " + str(7))
+            local_setup_cmds.append("sudo tc class add dev " + config["EMU_INTERFACE"] + " parent 1: classid 1:" + str(7) + " htb rate 100mbit")
+            local_setup_cmds.append("")
 
-        # allow for different kinds of loss (loss random, loss gemodel, loss state)
-        loss_kind = ""
-        for key in mapping:
-            if key.startswith("loss"):
-                loss_kind = key
-                target_loss = float(parts[mapping[key]])
-                break
+            # get target-parameters
+            parts = line.split()
+            target_bitrate = int(round(float(parts[mapping["rate"]]), 0))
 
-        # delay in fraction of a second -> *1000 -> delay in ms
-        target_delay = max(0, round((float(parts[mapping["delay"]]) - config["PHYS_LINK_DELAY_COMPENSATION"]) * 1000, 1))
+            # allow for different kinds of loss (loss random, loss gemodel, loss state)
+            loss_kind = ""
+            for key in mapping:
+                if key.startswith("loss"):
+                    loss_kind = key
+                    target_loss = float(parts[mapping[key]])
+                    break
 
-        # catch case of no connectivity at beginning/setup (be able to build tc-command structure, even if bitrate=0 -> normally error)
-        if target_bitrate == 0:
-            target_bitrate = 1000  # set default bitrate to be 1 Mbit/s (only happens if loss is 100% and bitrate does not matter therefore)
+            # delay in fraction of a second -> *1000 -> delay in ms
+            target_delay = max(0, round((float(parts[mapping["delay"]]) - config["PHYS_LINK_DELAY_COMPENSATION"]) * 1000, 1))
 
-        #
-        # local setup (part)
-        #
-        # add class
-        flowId1 = "1:" + remote_hostByte  # towards receiver
-        local_setup_cmds.append("sudo tc class add dev " + config[
-            "EMU_INTERFACE"] + " parent 1: classid " + flowId1 + " htb rate 100mbit")
+            # catch case of no connectivity at beginning/setup (be able to build tc-command structure, even if bitrate=0 -> normally error)
+            if target_bitrate == 0:
+                target_bitrate = 1000  # set default bitrate to be 1 Mbit/s (only happens if loss is 100% and bitrate does not matter therefore)
 
-        # add filter
-        local_setup_cmds.append("sudo tc filter add dev " + config["EMU_INTERFACE"] +
-                                " protocol ip parent 1:0 prio 1 u32 match ip dst " + remote_ip +
-                                " match ip src " + local_ip + " flowid " + flowId1)
+            #
+            # local setup (part)
+            #
+            # add class
+            flowId1 = "1:" + remote_hostByte  # towards receiver
+            local_setup_cmds.append("sudo tc class add dev " + config[
+                "EMU_INTERFACE"] + " parent 1: classid " + flowId1 + " htb rate 100mbit")
 
-        # add netem qdisc below htb
-        local_setup_cmds.append(
-            "sudo tc qdisc add dev " + config["EMU_INTERFACE"] + " parent " + flowId1 + " handle " + remote_hostByte +
-            ": netem rate " + str(target_bitrate) + "kbit delay " + str(target_delay) + "ms " + loss_kind + " " + str(target_loss))
+            # add filter
+            local_setup_cmds.append("sudo tc filter add dev " + config["EMU_INTERFACE"] +
+                                    " protocol ip parent 1:0 prio 1 u32 match ip dst " + remote_ip +
+                                    " match ip src " + local_ip + " flowid " + flowId1)
+
+            # add netem qdisc below htb
+            local_setup_cmds.append(
+                "sudo tc qdisc add dev " + config["EMU_INTERFACE"] + " parent " + flowId1 + " handle " + remote_hostByte +
+                ": netem rate " + str(target_bitrate) + "kbit delay " + str(target_delay) + "ms " + loss_kind + " " + str(target_loss))
 
         return local_setup_cmds, remote_setup_cmds
 

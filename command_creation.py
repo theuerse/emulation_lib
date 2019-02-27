@@ -31,7 +31,7 @@ def readIntermediateFile(filename):
     for entry in lines[0].rstrip().split(","):
         mapping[entry.strip()] = len(mapping.keys())
 
-    initial_configuration = lines[1]
+    initial_configuration = lines[1] if len(lines) >= 2 else ""
     local_cmds, remote_cmds = backend.get_indiv_setup_commands(CONFIG, mapping, initial_configuration, local_id, remote_id)
 
     # negative time-index stands for preparation/setup-phase before the emulation starts

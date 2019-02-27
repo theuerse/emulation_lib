@@ -31,10 +31,6 @@ def get_common_setup_commands(config):
     cmds.append("sudo tc filter del dev ifb0 root")
     cmds.append("sudo tc class del " + config["EMU_INTERFACE"] + " root")
     cmds.append("sudo tc class del ifb0 root")
-
-    cmds.append("sudo tc qdisc add dev " + config["EMU_INTERFACE"] + " root handle 1: htb default " + str(7))
-    cmds.append("sudo tc class add dev " + config["EMU_INTERFACE"] + " parent 1: classid 1:" + str(
-        7) + " htb rate 100mbit")
     cmds.append("")
 
     return cmds

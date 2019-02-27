@@ -21,29 +21,35 @@ class D_(backend.Backend):
         local_setup_cmds.append("sudo iptables -A INPUT -d " + local_ip + " -s " + remote_ip + " -j ACCEPT")
         local_setup_cmds.append("sudo iptables -A OUTPUT -d " + remote_ip + " -s " + local_ip + " -j ACCEPT")
 
-        # get target-parameters
-        parts = line.split()
+        if line:
+            # setup htb as root for the queues added later on
+            local_setup_cmds.append("sudo tc qdisc add dev " + config["EMU_INTERFACE"] + " root handle 1: htb default " + str(7))
+            local_setup_cmds.append("sudo tc class add dev " + config["EMU_INTERFACE"] + " parent 1: classid 1:" + str(7) + " htb rate 100mbit")
+            local_setup_cmds.append("")
 
-        # delay in fraction of a second -> *1000 -> delay in ms
-        target_delay = max(0, round((float(parts[mapping["delay"]]) - config["PHYS_LINK_DELAY_COMPENSATION"]) * 1000, 1))
+            # get target-parameters
+            parts = line.split()
 
-        #
-        # local setup (part)
-        #
-        # add class
-        flowId1 = "1:" + remote_hostByte  # towards receiver
-        local_setup_cmds.append("sudo tc class add dev " + config[
-            "EMU_INTERFACE"] + " parent 1: classid " + flowId1 + " htb rate 100mbit")
+            # delay in fraction of a second -> *1000 -> delay in ms
+            target_delay = max(0, round((float(parts[mapping["delay"]]) - config["PHYS_LINK_DELAY_COMPENSATION"]) * 1000, 1))
 
-        # add filter
-        local_setup_cmds.append("sudo tc filter add dev " + config["EMU_INTERFACE"] +
-                                " protocol ip parent 1:0 prio 1 u32 match ip dst " + remote_ip +
-                                " match ip src " + local_ip + " flowid " + flowId1)
+            #
+            # local setup (part)
+            #
+            # add class
+            flowId1 = "1:" + remote_hostByte  # towards receiver
+            local_setup_cmds.append("sudo tc class add dev " + config[
+                "EMU_INTERFACE"] + " parent 1: classid " + flowId1 + " htb rate 100mbit")
+
+            # add filter
+            local_setup_cmds.append("sudo tc filter add dev " + config["EMU_INTERFACE"] +
+                                    " protocol ip parent 1:0 prio 1 u32 match ip dst " + remote_ip +
+                                    " match ip src " + local_ip + " flowid " + flowId1)
 
 
-        local_setup_cmds.append(
-            "sudo tc qdisc add dev " + config["EMU_INTERFACE"] + " parent " + flowId1 + " handle " + remote_hostByte +
-            ": netem delay " + str(target_delay) + "ms")
+            local_setup_cmds.append(
+                "sudo tc qdisc add dev " + config["EMU_INTERFACE"] + " parent " + flowId1 + " handle " + remote_hostByte +
+                ": netem delay " + str(target_delay) + "ms")
 
         return local_setup_cmds, remote_setup_cmds
 
